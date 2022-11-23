@@ -5,20 +5,19 @@ from cisco_executor import Account, CiscoExecutor
 from data_sets import up_tags_20
 
 
-class Migrator:
-    def __init__(self):
-        self.account = Account(username='nbobkova')
-        self.hostname = input('Hostname: ')
-        self.interface = input('Interface (ex. 0/2/0): ')
-        self.outer_tag = input('Outer_tag (ex. 364): ')
-        self.sub_interface = '.'.join([self.interface, self.outer_tag])
+class DeviceMigrator:
+    def __init__(self, username, password, hostname, interface, outer_tag):
+        self.account = Account(username=username, password=password)
+        self.hostname = hostname
+        self.interface = interface
+        self.sub_interface = '.'.join([interface, outer_tag])
         self.interfaces_data = {
             'ip': [],
             'unnumbered': [],
             'dummy': [],
         }
 
-        self.ex = CiscoExecutor(account=self.account, hostname=self.hostname, connect=True)
+        self.ex = CiscoExecutor(account=self.account, hostname=hostname, connect=True)
 
     def get_tags(self):
         print('get_tags proccess')
@@ -80,7 +79,7 @@ class Migrator:
         # up_tags = self.get_tags()
         up_tags = up_tags_20[-10:]
         for tag in tqdm(up_tags):
-            interface_output = self.ex.cmd(f'show startup-config | section {self.interface}.{tag}$', timer=8)
+            interface_output = self.ex.cmd(f'show startup-config | section {self.interface}.{tag}$')
 
             if 'ip address' in interface_output:
                 ip_ifaces = self.get_ip_iface_data(interface_output)
@@ -171,3 +170,100 @@ set routing-options access-internal route {ip_with_prefixlen} qualified-next-hop
 
     def generate_config_shutdown_interfaces(self):
         pass
+
+
+class Iface:
+    phys_number = None
+    outer_tag = None
+    inner_tag = None
+    description = None
+    ip_address = None
+    ip_mask = None
+    is_unnumbered = None
+    is_shutdown = None
+
+    def __init__(self, strings: list):
+        for string in strings:
+            if 'interface ' in string:
+                """interface TenGigabitEthernet0/3/0.31993028"""
+                parts = string.split()
+                self.phys_number = parts[1].split('.')[0]
+            if 'description' in string:
+                description_parts = string.split()[1:]
+                self.description = ' '.join(description_parts)
+            if 'encapsulation' in string:
+                """ encapsulation dot1Q 3199 second-dot1q 3028"""
+                encapsulation_parts = string.split()
+                self.outer_tag = encapsulation_parts[2]
+                self.inner_tag = encapsulation_parts[4]
+            if 'ip address ' in string:
+                """  ip address 217.151.71.45 255.255.255.252"""
+                netw_parts = string.split()
+                self.ip_address = netw_parts[2]
+                self.ip_mask = netw_parts[3]
+                self.is_unnumbered = False
+            if 'unnumbered' in string:
+                self.is_unnumbered = True
+
+    def _parse(self):
+        ...
+
+    def generate_config(self):
+        ...
+
+
+class LocalMigrator:
+    _routes = {'iface_name': [str or IPv4Interface]}
+    _ifaces = []
+
+    def __init__(self, config):
+        # with open(f'{hostname}.txt') as f:
+        #     self.dev_config = f.read()
+
+        self.dev_config = config
+        self._parse_ifaces(self.dev_config)
+        self._parse_routes(self.dev_config)
+
+    def _parse_ifaces(self, config: str):
+        current_data = []
+        for line in config.splitlines():
+            if line == '!':
+                continue
+
+            if line.startswith('! '):
+                continue
+
+            if line.startswith('interface '):
+                if current_data:
+                    if 'interface' in current_data[0]:
+                        self._ifaces.append(Iface(current_data))
+                    current_data = []
+                else:
+                    current_data.append(line)
+                    continue
+
+            if current_data:
+                if not line.startswith(' '):
+                    if 'interface' in current_data[0]:
+                        self._ifaces.append(Iface(current_data))
+                    current_data = []
+                    continue
+
+            current_data.append(line)
+
+        print(len(self._ifaces))
+
+    def _parse_routes(self, config: str):
+        ...
+
+    def get_ifaces_by_outer_tag(self, phys_number, outer_tag):
+        return [
+            x for x in self._ifaces
+            if x.phys_number == phys_number and x.outer_tag == outer_tag
+        ]
+
+    def config_ip_interfaces(self, phys_number, outer_tag, data: dict) -> str:
+        ...
+
+    def config_unnumbered_interfaces(self,phys_number, outer_tag, data: dict) -> str:
+        ...
