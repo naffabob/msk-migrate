@@ -1,6 +1,5 @@
 from migrator import DeviceMigrator, LocalMigrator
 from getpass import getpass
-from test_data import config1, config3
 
 
 def use_device_migrate():
@@ -18,6 +17,15 @@ def use_device_migrate():
     print(dm.show_dummy_interfaces())
 
 
-if __name__ == '__main__':
-    lm = LocalMigrator(config3)
+def use_local_migrate():
+    hostname = input('Hostname: ')
+    interface = input('Interface (ex. 0/2/0): ')
+    outer_tag = input('Outer_tag (ex. 364): ')
 
+    lm = LocalMigrator(hostname=hostname)
+    print(lm.config_ip_interfaces(interface, outer_tag))
+    print(lm.config_unnumbered_interfaces(interface, outer_tag))
+
+
+if __name__ == '__main__':
+    use_local_migrate()
