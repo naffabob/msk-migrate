@@ -227,20 +227,17 @@ class LocalMigrator:
     def _parse_ifaces(self, config: str):
         current_data = []
         for line in config.splitlines():
-            if line == '!':
-                continue
 
-            if line.startswith('! '):
+            if line.startswith('!'):
                 continue
 
             if line.startswith('interface '):
                 if current_data:
-                    if 'interface' in current_data[0]:
-                        self._ifaces.append(Iface(current_data))
+                    self._ifaces.append(Iface(current_data))
                     current_data = []
-                else:
-                    current_data.append(line)
-                    continue
+
+                current_data.append(line)
+                continue
 
             if current_data:
                 if not line.startswith(' '):
@@ -249,9 +246,7 @@ class LocalMigrator:
                     current_data = []
                     continue
 
-            current_data.append(line)
-
-        print(len(self._ifaces))
+                current_data.append(line)
 
     def _parse_routes(self, config: str):
         ...
