@@ -23,8 +23,8 @@ def use_local_migrate():
     outer_tag = input('Outer_tag (ex. 364): ')
 
     lm = LocalMigrator(hostname=hostname)
-    print(lm.config_ip_interfaces(interface, outer_tag))
-    print(lm.config_unnumbered_interfaces(interface, outer_tag))
+    print(lm.config_ip_ifaces(interface, outer_tag))
+    print(lm.config_unnumbered_ifaces(interface, outer_tag))
 
 
 if __name__ == '__main__':
