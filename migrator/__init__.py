@@ -127,37 +127,23 @@ class LocalMigrator:
         self._parse_routes(self.dev_config)
 
     @staticmethod
-    def _collapse_to_ranges(inners: list) -> list:
+    def _collapse_to_ranges(inners: list[int]) -> list[int]:
         if len(inners) > 50:
             grid_interval = 10
         else:
             grid_interval = 1
 
-        i = 0
-        end = 0
-        inners_aggregated = []
-
-        while i < len(inners) - 1:
-            if inners[i + 1] - inners[i] <= grid_interval:
-                start = inners[i]
-                while True:
-                    i += 1
-                    if inners[i] == inners[-1]:
-                        end = inners[-1]
-                        break
-                    elif inners[i + 1] - inners[i] <= grid_interval:
-                        continue
-                    else:
-                        end = inners[i]
-                        i += 1
-                        break
-                inners_aggregated.append((str(start), str(end)))
-
+        ranges = []
+        for inner in inners:
+            if not ranges:
+                ranges.append([inner])
+            elif inner - prev_inner <= grid_interval:
+                ranges[-1].append(inner)
             else:
-                inners_aggregated.append(str(inners[i]))
-                i += 1
+                ranges.append([inner])
+            prev_inner = inner
 
-        return inners_aggregated
+        return ranges
 
     def _parse_ifaces(self, config: str):
         current_data = []
@@ -293,12 +279,12 @@ class LocalMigrator:
             else:
                 unit_type = '9'
             for obj in data:
-                if isinstance(obj, tuple):
-                    unit_start = f'{unit_type}{outer_tag.zfill(4)}{obj[0].zfill(4)}'
-                    unit_end = f'{unit_type}{outer_tag.zfill(4)}{obj[1].zfill(4)}'
-                    output += f'set system services static-subscribers group DUAL-TAG interface demux0.{unit_start} to demux0.{unit_end}\n'
-                else:
-                    single_unit = f'{unit_type}{outer_tag.zfill(4)}{obj.zfill(4)}'
+                if len(obj) == 1:
+                    single_unit = f'{unit_type}{outer_tag.zfill(4)}{str(obj[0]).zfill(4)}'
                     output += f'set system services static-subscribers group DUAL-TAG interface demux0.{single_unit}\n'
+                else:
+                    unit_start = f'{unit_type}{outer_tag.zfill(4)}{str(obj[0]).zfill(4)}'
+                    unit_end = f'{unit_type}{outer_tag.zfill(4)}{str(obj[-1]).zfill(4)}'
+                    output += f'set system services static-subscribers group DUAL-TAG interface demux0.{unit_start} to demux0.{unit_end}\n'
 
         return output
