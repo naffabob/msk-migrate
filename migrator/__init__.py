@@ -119,8 +119,8 @@ class LocalMigrator:
     _ifaces = []
     _routes = {}
 
-    def __init__(self, hostname):
-        with open(f'{hostname}.txt') as f:
+    def __init__(self, hostname: str):
+        with open(f'configs/{hostname}.txt') as f:
             self.dev_config = f.read()
 
         self._parse_ifaces(self.dev_config)
@@ -192,7 +192,7 @@ class LocalMigrator:
                     self._routes[route.phys_name] = []
                 self._routes[route.phys_name].append(route)
 
-    def config_ip_ifaces(self, phys_number, outer_tag) -> str:
+    def config_ip_ifaces(self, phys_number: str, outer_tag: str) -> str:
         ifaces = [
             x for x in self._ifaces
             if x.phys_number == phys_number and x.outer_tag == outer_tag and not x.is_unnumbered
@@ -216,7 +216,7 @@ class LocalMigrator:
             output += f'\n'
         return output
 
-    def config_unnumbered_ifaces(self, phys_number, outer_tag) -> str:
+    def config_unnumbered_ifaces(self, phys_number: str, outer_tag: str) -> str:
         ifaces = [
             x for x in self._ifaces
             if x.phys_number == phys_number and x.outer_tag == outer_tag and x.is_unnumbered

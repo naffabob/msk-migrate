@@ -1,4 +1,5 @@
 webapp/settings.py
+configs/
 *.db
 .DS_Store
 
