@@ -175,10 +175,13 @@ set routing-options access-internal route {ip_with_prefixlen} qualified-next-hop
 
 
 class Iface:
+    IP_IFACE_UNIT_PREPEND = '8'
+    UNNUM_IFACE_UNIT_PREPEND = '9'
     description = None
-    ip_address = None
-    ip_mask = None
+    is_loopback = False
     is_unnumbered = None
+    ip_interfaces = None
+    is_subscriber = None
     is_valid = True
     inner_tag = None
     outer_tag = None
@@ -188,20 +191,30 @@ class Iface:
     unit_type = None
 
     def __init__(self, strings: list):
+        self.ip_interfaces = []
+
         for string in strings:
             if 'interface ' in string:
-                """interface TenGigabitEthernet0/3/0.31993028"""
-                if '.' not in string:
-                    self.is_valid = False
-                    return
-
                 interface = re.findall(r'\d/\d/\d', string)
-                if not interface:
+                """
+                interface TenGigabitEthernet0/3/0.31993028
+                interface Loopback102
+                interface Loopback101
+                interface GigabitEthernet0
+                """
+                if 'Loopback' in string:
+                    self.is_loopback = True
+                    self.is_valid = True
+
+                elif '.' not in string:
                     self.is_valid = False
                     return
-
-                self.phys_number = interface[0]
-                self.phys_name = string.split()[1]
+                elif not interface:
+                    self.is_valid = False
+                    return
+                else:
+                    self.phys_number = interface[0]
+                    self.phys_name = string.split()[1]
 
             if 'shutdown' in string:
                 self.is_valid = False
@@ -221,25 +234,52 @@ class Iface:
             if 'ip address ' in string:
                 """  ip address 217.151.71.45 255.255.255.252"""
                 netw_parts = string.split()
-                self.ip_address = netw_parts[2]
-                self.ip_mask = netw_parts[3]
+                ip_address = netw_parts[2]
+                ip_mask = netw_parts[3]
+                ip = IPv4Interface((ip_address, ip_mask))
+                self.ip_interfaces.append(ip)
                 self.is_unnumbered = False
-                self.unit_type = '8'
+                self.unit_type = self.IP_IFACE_UNIT_PREPEND
 
             if 'unnumbered' in string:
                 self.is_unnumbered = True
-                self.unit_type = '9'
+                self.unit_type = self.UNNUM_IFACE_UNIT_PREPEND
+
+            if 'subscriber' in string:
+                self.is_subscriber = True
+
+        self._validate()
+        self._constructor()
+
+    def _constructor(self):
+        if not self.is_loopback and self.is_valid:
+            self.unit = self.unit_type + self.unit
+
+    def _validate(self):
+        if self.is_loopback:
+            if not self.ip_interfaces:
+                self.is_valid = False
+                return
+
+        else:
+            if not self.inner_tag:
+                self.is_valid = False
+                return
+
+            if not self.unit_type:
+                self.is_valid = False
+                return
 
 
 class Route:
-    ip_mask = None
-    ip_address = None
     phys_name = None
+    ip_prefix = None
 
     def __init__(self, route_config: str):
         parts = route_config.split()
-        self.ip_address = parts[2]
-        self.ip_mask = parts[3]
+        ip_address = parts[2]
+        ip_mask = parts[3]
+        self.ip_prefix = IPv4Interface((ip_address, ip_mask))
         self.phys_name = parts[4]
 
 
@@ -317,20 +357,11 @@ class LocalMigrator:
                     self._routes[route.phys_name] = []
                 self._routes[route.phys_name].append(route)
 
-    def _get_ip_ifaces(self, phys_number: str, outer_tag: str) -> list:
-        return [
-            x for x in self._ifaces
-            if x.phys_number == phys_number and x.outer_tag == outer_tag and x.is_unnumbered is False
-        ]
-
-    def _get_unnumbered_ifaces(self, phys_number: str, outer_tag: str) -> list:
-        return [
-            x for x in self._ifaces
-            if x.phys_number == phys_number and x.outer_tag == outer_tag and x.is_unnumbered is True
-        ]
-
     def config_ip_ifaces(self, phys_number, outer_tag) -> str:
-        ifaces = self._get_ip_ifaces(phys_number, outer_tag)
+        ifaces = [
+            x for x in self._ifaces
+            if x.phys_number == phys_number and x.outer_tag == outer_tag and not x.is_unnumbered
+        ]
 
         output = ''
 
@@ -338,67 +369,90 @@ class LocalMigrator:
             if not iface.description:
                 iface.description = 'NO_DESCRIPTION'
 
-            ip = IPv4Interface((iface.ip_address, iface.ip_mask))
-            ip_prefix = ip.with_prefixlen
-
             output += (
-                f'set interfaces demux0 unit {iface.unit_type}{iface.unit} description "{iface.description}"\n'
-                f'set interfaces demux0 unit {iface.unit_type}{iface.unit} vlan-tags outer {iface.outer_tag}\n'
-                f'set interfaces demux0 unit {iface.unit_type}{iface.unit} vlan-tags inner {iface.inner_tag}\n'
-                f'set interfaces demux0 unit {iface.unit_type}{iface.unit} family inet address {ip_prefix}\n'
-                f'\n'
+                f'set interfaces demux0 unit {iface.unit} description "{iface.description}"\n'
+                f'set interfaces demux0 unit {iface.unit} vlan-tags outer {iface.outer_tag}\n'
+                f'set interfaces demux0 unit {iface.unit} vlan-tags inner {iface.inner_tag}\n'
             )
-
+            for ip in iface.ip_interfaces:
+                output += (
+                    f'set interfaces demux0 unit {iface.unit} family inet address {ip}\n'
+                )
+            output += f'\n'
         return output
 
     def config_unnumbered_ifaces(self, phys_number, outer_tag) -> str:
-        ifaces = self._get_unnumbered_ifaces(phys_number, outer_tag)
+        ifaces = [
+            x for x in self._ifaces
+            if x.phys_number == phys_number and x.outer_tag == outer_tag and x.is_unnumbered
+        ]
+
+        lo_networks = []
+
+        for iface in (x for x in self._ifaces if x.is_loopback):
+            lo_networks.extend(iface.ip_interfaces)
 
         output = ''
 
         for iface in ifaces:
+
             routes = self._routes.get(iface.phys_name)
+
             if not routes:
                 output += f'NO ROUTE for {iface.phys_name}\n'
                 continue
 
-            # Only for /24 prefix length usage
-            subnet_route = routes[0]
-            octets = subnet_route.ip_address.split('.')
-            octets[3] = '1'
-            gw = '.'.join(octets)
-
             if not iface.description:
                 iface.description = 'NO_DESCRIPTION'
 
             output += (
-                f'set interfaces demux0 unit {iface.unit_type}{iface.unit} description "{iface.description}"\n'
-                f'set interfaces demux0 unit {iface.unit_type}{iface.unit} vlan-tags outer {iface.outer_tag}\n'
-                f'set interfaces demux0 unit {iface.unit_type}{iface.unit} vlan-tags inner {iface.inner_tag}\n'
-                f'set interfaces demux0 unit {iface.unit_type}{iface.unit} family inet unnumbered-address lo0.0\n'
-                f'set interfaces demux0 unit {iface.unit_type}{iface.unit} family inet unnumbered-address preferred-source-address {gw}\n'
+                f'set interfaces demux0 unit {iface.unit} description "{iface.description}"\n'
+                f'set interfaces demux0 unit {iface.unit} vlan-tags outer {iface.outer_tag}\n'
+                f'set interfaces demux0 unit {iface.unit} vlan-tags inner {iface.inner_tag}\n'
+                f'set interfaces demux0 unit {iface.unit} family inet unnumbered-address lo0.0\n'
+            )
+
+            first_cust_route = routes[0].ip_prefix
+
+            gw = ''
+
+            for lo_network in lo_networks:
+                if lo_network.network.overlaps(first_cust_route.network):
+                    gw = lo_network.ip
+                    break
+
+            output += (
+                f'set interfaces demux0 unit {iface.unit} family inet unnumbered-address preferred-source-address {gw}\n'
             )
 
             for route in routes:
-                ip = IPv4Interface((route.ip_address, route.ip_mask))
                 output += (
-                    f'set routing-options access-internal route {ip.with_prefixlen} qualified-next-hop demux0.{iface.unit}\n'
+                    f'set routing-options access-internal route {route.ip_prefix} qualified-next-hop demux0.{iface.unit}\n'
                 )
+
             output += '\n'
 
         return output
 
     def config_static_subscribers(self, phys_number: str, outer_tag: str) -> str:
-        ip_ifaces = self._get_ip_ifaces(phys_number, outer_tag)
-        unnum_ifaces = self._get_unnumbered_ifaces(phys_number, outer_tag)
+        ip_ifaces = [
+            x for x in self._ifaces
+            if x.phys_number == phys_number and x.outer_tag == outer_tag and not x.is_unnumbered and x.is_subscriber
+        ]
+
+        unnum_ifaces = [
+            x for x in self._ifaces
+            if x.phys_number == phys_number and x.outer_tag == outer_tag and x.is_unnumbered and x.is_subscriber
+        ]
 
         inners_data = {
             'ip': self._aggregate_inners(ip_ifaces),
             'unnum': self._aggregate_inners(unnum_ifaces)
         }
         output = ''
+
         for iface_type, data in inners_data.items():
-            if type == 'ip':
+            if iface_type == 'ip':
                 unit_type = '8'
             else:
                 unit_type = '9'

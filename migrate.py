@@ -25,6 +25,7 @@ def use_local_migrate():
     lm = LocalMigrator(hostname=hostname)
     print(lm.config_ip_ifaces(interface, outer_tag))
     print(lm.config_unnumbered_ifaces(interface, outer_tag))
+    print(lm.config_static_subscribers(interface, outer_tag))
 
 
 if __name__ == '__main__':
