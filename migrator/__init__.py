@@ -223,6 +223,7 @@ class Iface:
             if 'description' in string:
                 description_parts = string.split()[1:]
                 self.description = ' '.join(description_parts)
+                self._normalize_descr()
 
             if 'second-dot1q' in string:
                 """ encapsulation dot1Q 3199 second-dot1q 3028"""
@@ -250,6 +251,9 @@ class Iface:
 
         self._validate()
         self._constructor()
+
+    def _normalize_descr(self):
+        self.description = re.sub('"', '', self.description)
 
     def _constructor(self):
         if not self.is_loopback and self.is_valid:
@@ -295,12 +299,15 @@ class LocalMigrator:
         self._parse_routes(self.dev_config)
 
     @staticmethod
-    def _aggregate_inners(ifaces: list) -> list:
-        grid_interval = 1
+    def _collapse_to_ranges(inners: list) -> list:
+        if len(inners) > 50:
+            grid_interval = 10
+        else:
+            grid_interval = 1
+
         i = 0
         end = 0
         inners_aggregated = []
-        inners = list(map(int, [iface.inner_tag for iface in ifaces]))
 
         while i < len(inners) - 1:
             if inners[i + 1] - inners[i] <= grid_interval:
@@ -435,20 +442,21 @@ class LocalMigrator:
         return output
 
     def config_static_subscribers(self, phys_number: str, outer_tag: str) -> str:
-        ip_ifaces = [
-            x for x in self._ifaces
+        ip_inners = [
+            int(x.inner_tag) for x in self._ifaces
             if x.phys_number == phys_number and x.outer_tag == outer_tag and not x.is_unnumbered and x.is_subscriber
         ]
 
-        unnum_ifaces = [
-            x for x in self._ifaces
+        unnum_inners = [
+            int(x.inner_tag) for x in self._ifaces
             if x.phys_number == phys_number and x.outer_tag == outer_tag and x.is_unnumbered and x.is_subscriber
         ]
 
         inners_data = {
-            'ip': self._aggregate_inners(ip_ifaces),
-            'unnum': self._aggregate_inners(unnum_ifaces)
+            'ip': self._collapse_to_ranges(ip_inners),
+            'unnum': self._collapse_to_ranges(unnum_inners)
         }
+
         output = ''
 
         for iface_type, data in inners_data.items():
