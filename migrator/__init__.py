@@ -127,7 +127,7 @@ class LocalMigrator:
         self._parse_routes(self.dev_config)
 
     @staticmethod
-    def _collapse_to_ranges(inners: list[int]) -> list[int]:
+    def _collapse_to_ranges(inners: list[int]) -> list[list]:
         if len(inners) > 50:
             grid_interval = 10
         else:
@@ -203,25 +203,28 @@ class LocalMigrator:
         return output
 
     def config_unnumbered_ifaces(self, phys_number: str, outer_tag: str) -> str:
-        ifaces = [
-            x for x in self._ifaces
-            if x.phys_number == phys_number and x.outer_tag == outer_tag and x.is_unnumbered
-        ]
-
         lo_networks = []
 
         for iface in (x for x in self._ifaces if x.is_loopback):
             lo_networks.extend(iface.ip_interfaces)
 
+        no_routes_ifaces = []     # TenGigabitEthernet0/3/0.3643511 == BAD
+
         output = ''
 
-        for iface in ifaces:
-
-            routes = self._routes.get(iface.phys_name)
-
-            if not routes:
-                output += f'NO ROUTE for {iface.phys_name}\n'
+        for iface in self._ifaces:
+            if not iface.is_unnumbered:
                 continue
+            if not iface.phys_number == phys_number:
+                continue
+            if not iface.outer_tag == outer_tag:
+                continue
+            if not self._routes.get(iface.phys_name):
+                no_routes_ifaces.append(iface)
+                continue
+
+            # config interface, put into config output
+            routes = self._routes.get(iface.phys_name)
 
             if not iface.description:
                 iface.description = 'NO_DESCRIPTION'
@@ -252,6 +255,9 @@ class LocalMigrator:
                 )
 
             output += '\n'
+
+        for iface in no_routes_ifaces:
+            output += f'NO ROUTE for {iface.phys_name}\n\n'
 
         return output
 
