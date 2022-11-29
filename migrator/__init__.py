@@ -119,12 +119,9 @@ class LocalMigrator:
     _ifaces = []
     _routes = {}
 
-    def __init__(self, hostname: str):
-        with open(f'configs/{hostname}.txt') as f:
-            self.dev_config = f.read()
-
-        self._parse_ifaces(self.dev_config)
-        self._parse_routes(self.dev_config)
+    def __init__(self, config: str):
+        self._parse_ifaces(config)
+        self._parse_routes(config)
 
     @staticmethod
     def _collapse_to_ranges(inners: list[int]) -> list[list]:

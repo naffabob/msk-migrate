@@ -2,13 +2,24 @@ from migrator import LocalMigrator
 
 
 def use_local_migrate() -> str:
-    hostname = input('Hostname: ')
-    interface = input('Interface (ex. 0/2/0): ')
-    outer_tag = input('Outer_tag (ex. 364): ')
+    try:
+        hostname = input('Hostname: ')
+        interface = input('Interface (ex. 0/2/0): ')
+        outer_tag = input('Outer_tag (ex. 364): ')
+    except KeyboardInterrupt:
+        print('\nTry again later')
+        quit()
+
+    try:
+        with open(f'configs/{hostname}.txt') as f:
+            dev_config = f.read()
+    except FileNotFoundError:
+        print('No such config file.')
+        quit()
 
     output = ''
 
-    lm = LocalMigrator(hostname=hostname)
+    lm = LocalMigrator(dev_config)
     output += lm.config_ip_ifaces(interface, outer_tag)
     output += lm.config_unnumbered_ifaces(interface, outer_tag)
     output += lm.config_static_subscribers(interface, outer_tag)
