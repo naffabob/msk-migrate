@@ -28,7 +28,7 @@ class Iface:
         self._validate()
         self._constructor()
 
-    def _parse(self, strings: list[str]):
+    def _parse(self, strings: List[str]):
         for string in strings:
             if 'interface ' in string:
                 interface = re.findall(r'\d/\d/\d', string)
