@@ -1,5 +1,6 @@
 import re
 from ipaddress import IPv4Interface
+from typing import List
 
 
 class Iface:
@@ -19,7 +20,7 @@ class Iface:
     unit_type = None
     static_routes = None
 
-    def __init__(self, strings: list):
+    def __init__(self, strings: List[str]):
         self.ip_interfaces = []
         self.static_routes = []
 
@@ -27,7 +28,7 @@ class Iface:
         self._validate()
         self._constructor()
 
-    def _parse(self, strings: list):
+    def _parse(self, strings: list[str]):
         for string in strings:
             if 'interface ' in string:
                 interface = re.findall(r'\d/\d/\d', string)
@@ -72,7 +73,7 @@ class Iface:
                 netw_parts = string.split()
                 ip_address = netw_parts[2]
                 ip_mask = netw_parts[3]
-                ip = IPv4Interface((ip_address, ip_mask))
+                ip = IPv4Interface(f'{ip_address}/{ip_mask}')
                 self.ip_interfaces.append(ip)
                 self.is_unnumbered = False
                 self.unit_type = self.IP_IFACE_UNIT_PREPEND
@@ -116,7 +117,7 @@ class Route:
         parts = route_config.split()
         ip_address = parts[2]
         ip_mask = parts[3]
-        self.ip_prefix = IPv4Interface((ip_address, ip_mask))
+        self.ip_prefix = IPv4Interface(f'{ip_address}/{ip_mask}')
 
         ip_pattern = r'\d*\.\d*\.\d*\.\d*'
         next_hops = re.findall(ip_pattern, parts[4])
@@ -137,7 +138,7 @@ class LocalMigrator:
         self._parse_routes(config)
 
     @staticmethod
-    def _collapse_to_ranges(inners: list[int]) -> list[list]:
+    def _collapse_to_ranges(inners: List[int]) -> List[list]:
         if len(inners) > 50:
             grid_interval = 10
         else:
