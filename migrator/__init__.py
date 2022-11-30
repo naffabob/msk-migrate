@@ -17,10 +17,17 @@ class Iface:
     phys_name = None
     unit = None
     unit_type = None
+    static_routes = None
 
     def __init__(self, strings: list):
         self.ip_interfaces = []
+        self.static_routes = []
 
+        self._parse(strings)
+        self._validate()
+        self._constructor()
+
+    def _parse(self, strings: list):
         for string in strings:
             if 'interface ' in string:
                 interface = re.findall(r'\d/\d/\d', string)
@@ -77,9 +84,6 @@ class Iface:
             if 'subscriber' in string:
                 self.is_subscriber = True
 
-        self._validate()
-        self._constructor()
-
     def _normalize_descr(self):
         self.description = re.sub('"', '', self.description)
 
@@ -106,20 +110,29 @@ class Iface:
 class Route:
     phys_name = None
     ip_prefix = None
+    next_hop = None
 
     def __init__(self, route_config: str):
         parts = route_config.split()
         ip_address = parts[2]
         ip_mask = parts[3]
         self.ip_prefix = IPv4Interface((ip_address, ip_mask))
-        self.phys_name = parts[4]
+
+        ip_pattern = r'\d*\.\d*\.\d*\.\d*'
+        next_hops = re.findall(ip_pattern, parts[4])
+
+        if next_hops:
+            self.next_hop = next_hops[0]
+        else:
+            self.phys_name = parts[4]
 
 
 class LocalMigrator:
-    _ifaces = []
-    _routes = {}
 
     def __init__(self, config: str):
+        self._ifaces = []
+        self._routes = {}
+
         self._parse_ifaces(config)
         self._parse_routes(config)
 
@@ -169,11 +182,21 @@ class LocalMigrator:
 
     def _parse_routes(self, config: str):
         for line in config.splitlines():
-            if line.startswith('ip route ') and 'thernet' in line:
+            if line.startswith('ip route '):
+                if 'vrf' in line:
+                    continue
+
                 route = Route(line)
-                if not self._routes.get(route.phys_name):
-                    self._routes[route.phys_name] = []
-                self._routes[route.phys_name].append(route)
+
+                if route.phys_name:
+                    if not self._routes.get(route.phys_name):
+                        self._routes[route.phys_name] = []
+                    self._routes[route.phys_name].append(route)
+
+                else:
+                    if not self._routes.get(route.next_hop):
+                        self._routes[route.next_hop] = []
+                    self._routes[route.next_hop].append(route)
 
     def config_ip_ifaces(self, phys_number: str, outer_tag: str) -> str:
         ifaces = [
@@ -196,6 +219,24 @@ class LocalMigrator:
                 output += (
                     f'set interfaces demux0 unit {iface.unit} family inet address {ip}\n'
                 )
+
+            # Parse static routes for iface
+            ip_networks = [x.network for x in iface.ip_interfaces]
+
+            for network in ip_networks:
+                hosts = network.hosts()
+                for host in hosts:
+                    route = self._routes.get(host.compressed)
+                    if not route:
+                        continue
+
+                    iface.static_routes.extend(route)
+
+            for route in iface.static_routes:
+                output += (
+                    f'set routing-options access route {route.ip_prefix} qualified-next-hop {route.next_hop}\n'
+                )
+
             output += f'\n'
         return output
 
@@ -205,7 +246,7 @@ class LocalMigrator:
         for iface in (x for x in self._ifaces if x.is_loopback):
             lo_networks.extend(iface.ip_interfaces)
 
-        no_routes_ifaces = []     # TenGigabitEthernet0/3/0.3643511 == BAD
+        no_routes_ifaces = []
 
         output = ''
 
@@ -249,6 +290,18 @@ class LocalMigrator:
             for route in routes:
                 output += (
                     f'set routing-options access-internal route {route.ip_prefix} qualified-next-hop demux0.{iface.unit}\n'
+                )
+
+                # Parse static routes for iface
+                static_route = self._routes.get(route.ip_prefix.ip.compressed)
+                if not static_route:
+                    continue
+
+                iface.static_routes.extend(static_route)
+
+            for route in iface.static_routes:
+                output += (
+                    f'set routing-options access route {route.ip_prefix} qualified-next-hop {route.next_hop}\n'
                 )
 
             output += '\n'
