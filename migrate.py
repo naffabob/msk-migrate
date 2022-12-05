@@ -1,4 +1,4 @@
-from migrator import LocalMigrator
+from migrator import LocalMigrator, CONFIG_DIR
 
 
 def use_local_migrate() -> str:
@@ -11,7 +11,7 @@ def use_local_migrate() -> str:
         quit()
 
     try:
-        with open(f'configs/{hostname}.txt') as f:
+        with open(f'{CONFIG_DIR}{hostname}.ti.ru') as f:
             dev_config = f.read()
     except FileNotFoundError:
         print('No such config file.')

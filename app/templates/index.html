@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h4>Migrator</h4>
+<div class="row mb-4">
+	<div class="col-4">
+		<form>
+			{{ form.hidden_tag() }}
+			<div class="mb-3">
+				{{ form.hostname.label }}
+				{{ form.hostname }}
+				{% if form.hostname.errors %}
+					{% for error in form.hostname.errors %}
+						<p class="text-danger">{{ error }}</p>
+					{% endfor %}
+				{% endif %}
+			</div>
+			<div class="mb-3">
+				{{ form.interface.label }}
+				{{ form.interface }}
+				{% if form.interface.errors %}
+					{% for error in form.interface.errors %}
+						<p class="text-danger">{{ error }}</p>
+					{% endfor %}
+				{% endif %}
+			</div>
+			<div class="mb-3">
+				{{ form.outer_tag.label }}
+				{{ form.outer_tag }}
+				{% if form.outer_tag.errors %}
+					{% for error in form.outer_tag.errors %}
+						<p class="text-danger">{{ error }}</p>
+					{% endfor %}
+				{% endif %}
+			</div>
+			<button type="submit" class="btn btn-success" name="action" value="generate_config">
+				<i class="bi bi-check-circle"></i> Generate config
+			</button>
+		</form>
+	</div>
+</div>
+<div class="form-floating">
+	<textarea class="form-control" id="config" style="height: 350px">{{ output }}</textarea>
+	<label for="config">Config</label>
+</div>
+{% endblock %}
