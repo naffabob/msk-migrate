@@ -2,6 +2,8 @@ import re
 from ipaddress import IPv4Interface
 from typing import List
 
+CONFIG_DIR = 'configs/'
+
 
 class Iface:
     IP_IFACE_UNIT_PREPEND = '8'
@@ -342,6 +344,6 @@ class LocalMigrator:
                 else:
                     unit_start = f'{unit_type}{outer_tag.zfill(4)}{str(obj[0]).zfill(4)}'
                     unit_end = f'{unit_type}{outer_tag.zfill(4)}{str(obj[-1]).zfill(4)}'
-                    output += f'set system services static-subscribers group DUAL-TAG interface demux0.{unit_start} to demux0.{unit_end}\n'
+                    output += f'set system services static-subscribers group DUAL-TAG interface demux0.{unit_start} upto demux0.{unit_end}\n'
 
         return output
