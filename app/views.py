@@ -8,6 +8,7 @@ from migrator import LocalMigrator, CONFIG_DIR
 @app.route('/')
 def index():
     output = ''
+    cisco_output = ''
 
     input_form = InputForm(data=request.args)
 
@@ -35,4 +36,6 @@ def index():
             if not output:
                 flash(f'No current active interfaces for outer: {interface}.{outer_tag}', category='danger')
 
-    return render_template('index.html', form=input_form, output=output)
+            cisco_output += lm.config_cisco_shutdown(interface, outer_tag)
+
+    return render_template('index.html', form=input_form, output=output, cisco_output=cisco_output)

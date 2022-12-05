@@ -14,13 +14,11 @@ class InputForm(FlaskForm):
 
     render_kw = {'class': 'form-control'}
     hostname = SelectField(
-        label='Choose hostname',
         validators=[DataRequired(message='The field is required')],
         render_kw=render_kw,
     )
 
     interface = StringField(
-        label='Interface, ex.: 0/3/0',
         validators=[
             DataRequired(message='The field is required'),
             Regexp(regex=r'\d/\d/\d', message='Wrong interface format'),
@@ -29,13 +27,12 @@ class InputForm(FlaskForm):
     )
 
     outer_tag = IntegerField(
-        label='Outer tag, ex.: 364',
         validators=[
             DataRequired(),
             NumberRange(
                 min=min_outer_tag_l,
                 max=max_outer_tag_l,
-                message=f'From {min_outer_tag_l} to {max_outer_tag_l} characters'
+                message=f'From {min_outer_tag_l} to {max_outer_tag_l} value'
             ),
 
         ],

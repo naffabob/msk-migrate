@@ -347,3 +347,18 @@ class LocalMigrator:
                     output += f'set system services static-subscribers group DUAL-TAG interface demux0.{unit_start} upto demux0.{unit_end}\n'
 
         return output
+
+    def config_cisco_shutdown(self, phys_number: str, outer_tag: str) -> str:
+        ifaces = [
+            x for x in self._ifaces
+            if x.phys_number == phys_number and x.outer_tag == outer_tag
+        ]
+
+        output = ''
+        for iface in ifaces:
+            output += (
+                f'interface {iface.phys_name}\n'
+                'shutdown\n'
+            )
+
+        return output

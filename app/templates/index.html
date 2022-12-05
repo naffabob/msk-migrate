@@ -1,46 +1,57 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h4>Migrator</h4>
-<div class="row mb-4">
-	<div class="col-4">
-		<form>
-			{{ form.hidden_tag() }}
-			<div class="mb-3">
-				{{ form.hostname.label }}
-				{{ form.hostname }}
-				{% if form.hostname.errors %}
-					{% for error in form.hostname.errors %}
-						<p class="text-danger">{{ error }}</p>
-					{% endfor %}
-				{% endif %}
-			</div>
-			<div class="mb-3">
-				{{ form.interface.label }}
-				{{ form.interface }}
-				{% if form.interface.errors %}
-					{% for error in form.interface.errors %}
-						<p class="text-danger">{{ error }}</p>
-					{% endfor %}
-				{% endif %}
-			</div>
-			<div class="mb-3">
-				{{ form.outer_tag.label }}
-				{{ form.outer_tag }}
-				{% if form.outer_tag.errors %}
-					{% for error in form.outer_tag.errors %}
-						<p class="text-danger">{{ error }}</p>
-					{% endfor %}
-				{% endif %}
-			</div>
-			<button type="submit" class="btn btn-success" name="action" value="generate_config">
-				<i class="bi bi-check-circle"></i> Generate config
-			</button>
-		</form>
+<form class="row mb-3">
+
+	<div class="col-auto">
+		<label for="hostname" class="form-label">Hostname</label><br>
+		{{ form.hostname }}
+		{% if form.hostname.errors %}
+		{% for error in form.hostname.errors %}
+		<p class="text-danger">{{ error }}</p>
+		{% endfor %}
+		{% endif %}
 	</div>
-</div>
-<div class="form-floating">
-	<textarea class="form-control" id="config" style="height: 350px">{{ output }}</textarea>
-	<label for="config">Config</label>
-</div>
+
+	<div class="col-auto">
+		<label for="interface" class="form-label">Interface</label><br>
+		{{ form.interface }}
+		{% if form.interface.errors %}
+		{% for error in form.interface.errors %}
+		<p class="text-danger">{{ error }}</p>
+		{% endfor %}
+		{% endif %}
+	</div>
+
+	<div class="col-auto">
+		<label for="outer_tag" class="form-label">Outer tag</label><br>
+		{{ form.outer_tag }}
+		{% if form.outer_tag.errors %}
+		{% for error in form.outer_tag.errors %}
+		<p class="text-danger">{{ error }}</p>
+		{% endfor %}
+		{% endif %}
+	</div>
+	<div class="col-auto">
+		<label class="form-label">&nbsp;</label><br>
+		<button type="submit" class="btn btn-success" name="action" value="generate_config">
+			<i class="bi bi-check-circle"></i> Generate config
+		</button>
+	</div>
+</form>
+
+{% if output %}
+	<div class="row mb-3">
+		<div class="col">
+			<h5>Juniper config</h5>
+			<textarea class="form-control" id="config" rows="10" wrap="off" readonly>{{ output }}</textarea>
+		</div>
+	</div>
+	<div class="row mb-3">
+		<div class="col">
+			<h5>Cisco config</h5>
+			<textarea class="form-control" id="cisco_config" rows="10" wrap="off" readonly>{{ cisco_output }}</textarea>
+		</div>
+	</div>
+{% endif %}
 {% endblock %}

@@ -23,6 +23,7 @@ def use_local_migrate() -> str:
     output += lm.config_ip_ifaces(interface, outer_tag)
     output += lm.config_unnumbered_ifaces(interface, outer_tag)
     output += lm.config_static_subscribers(interface, outer_tag)
+    output += lm.config_cisco_shutdown(interface, outer_tag)
     if not output:
         return f'No current active interfaces for outer: {interface}.{outer_tag}'
 
