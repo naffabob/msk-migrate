@@ -1,6 +1,14 @@
 {% extends "base.html" %}
 
+{% block title %}Upload{% endblock %}
+
 {% block content %}
+
+<div class="row mb-3 gx-2">
+	<div class="p-3 border-4 bg-info bg-opacity-10 border-info border-start border-opacity-50 text-muted">
+		При необходимости можно загрузить файл конфигурации циско-браса через эту форму.
+	</div>
+</div>
 
 <form class="row mb-3 gx-2" method="POST" enctype="multipart/form-data">
 	<div class="col-auto">
@@ -13,7 +21,7 @@
 	</div>
 	<div class="col-auto">
 		<button type="submit" class="btn btn-success" name="action" value="upload">
-			<i class="bi bi-check-circle"></i> Upload config file
+			<i class="bi bi-check-circle"></i> Upload
 		</button>
 	</div>
 </form>
