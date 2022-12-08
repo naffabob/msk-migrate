@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<form class="row mb-3 gx-2" method="POST" enctype="multipart/form-data">
+	<div class="col-auto">
+		{{ form.config }}
+		{% if form.config.errors %}
+		{% for error in form.config.errors %}
+		<p class="text-danger">{{ error }}</p>
+		{% endfor %}
+		{% endif %}
+	</div>
+	<div class="col-auto">
+		<button type="submit" class="btn btn-success" name="action" value="upload">
+			<i class="bi bi-check-circle"></i> Upload config file
+		</button>
+	</div>
+</form>
+
+{% endblock %}

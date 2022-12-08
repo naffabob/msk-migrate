@@ -2,10 +2,22 @@ from os import listdir
 from os.path import isfile, join
 
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileField, FileAllowed, FileRequired
+
 from wtforms import SelectField, StringField, IntegerField
 from wtforms.validators import DataRequired, Regexp, NumberRange
 
 from migrator import CONFIG_DIR
+
+
+class ConfigForm(FlaskForm):
+    config = FileField(
+        validators=[
+            FileRequired(),
+            FileAllowed(['ti.ru'], 'File with .ti.ru suffix only')
+        ],
+        render_kw={"class": "form-control"}
+    )
 
 
 class InputForm(FlaskForm):

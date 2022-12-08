@@ -1,12 +1,15 @@
 from flask import flash, render_template, request, redirect, url_for
+from werkzeug.utils import secure_filename
 
 from app import app
-from app.forms import InputForm
+from app.forms import InputForm, ConfigForm
 from migrator import LocalMigrator, CONFIG_DIR
 
 
 @app.route('/')
 def config():
+    page = 'config'
+
     output = ''
     cisco_output = ''
 
@@ -38,4 +41,23 @@ def config():
 
             cisco_output += lm.config_cisco_shutdown(interface, outer_tag)
 
-    return render_template('config.html', form=input_form, output=output, cisco_output=cisco_output)
+    return render_template('config.html', form=input_form, page=page, output=output, cisco_output=cisco_output)
+
+
+@app.route('/upload', methods=['GET', 'POST'])
+def upload():
+    page = 'upload'
+
+    form = ConfigForm()
+    action = request.form.get('action')
+
+    if request.method == 'POST' and action == 'upload':
+        if form.validate_on_submit():
+            f = form.config.data
+            filename = secure_filename(f.filename)
+            f.save(f'{CONFIG_DIR}{filename}')
+
+            flash(f'File {filename} successfully uploaded', category='success')
+            return redirect(url_for('config'))
+
+    return render_template('upload.html', form=form, page=page)
