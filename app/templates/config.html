@@ -1,7 +1,18 @@
 {% extends "base.html" %}
 
 {% block content %}
-<form class="row mb-3">
+
+<style>
+.console_text, .console_text:focus {
+	color: #ebebeb;
+	background-color: #333333;
+	padding: 10px;
+	border-radius: 5px;
+	font-family: monospace;
+}
+</style>
+
+<form class="row mb-3 gx-2">
 
 	<div class="col-auto">
 		<label for="hostname" class="form-label">Hostname</label><br>
@@ -35,7 +46,7 @@
 	<div class="col-auto">
 		<label class="form-label">&nbsp;</label><br>
 		<button type="submit" class="btn btn-success" name="action" value="generate_config">
-			<i class="bi bi-check-circle"></i> Generate config
+			<i class="bi bi-check-circle"></i> Config
 		</button>
 	</div>
 </form>
@@ -44,13 +55,13 @@
 	<div class="row mb-3">
 		<div class="col">
 			<h5>Juniper config</h5>
-			<textarea class="form-control" id="config" rows="10" wrap="off" readonly>{{ output }}</textarea>
+			<textarea class="form-control console_text" id="config" rows="10" wrap="off" readonly>{{ output }}</textarea>
 		</div>
 	</div>
 	<div class="row mb-3">
 		<div class="col">
 			<h5>Cisco config</h5>
-			<textarea class="form-control" id="cisco_config" rows="10" wrap="off" readonly>{{ cisco_output }}</textarea>
+			<textarea class="form-control console_text" id="cisco_config" rows="10" wrap="off" readonly>{{ cisco_output }}</textarea>
 		</div>
 	</div>
 {% endif %}

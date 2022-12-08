@@ -6,7 +6,7 @@ from migrator import LocalMigrator, CONFIG_DIR
 
 
 @app.route('/')
-def index():
+def config():
     output = ''
     cisco_output = ''
 
@@ -26,7 +26,7 @@ def index():
                     dev_config = f.read()
             except FileNotFoundError:
                 flash('No such config file.', category='error')
-                return redirect(url_for('index'))
+                return redirect(url_for('config'))
 
             lm = LocalMigrator(dev_config)
             output += lm.config_ip_ifaces(interface, outer_tag)
@@ -38,4 +38,4 @@ def index():
 
             cisco_output += lm.config_cisco_shutdown(interface, outer_tag)
 
-    return render_template('index.html', form=input_form, output=output, cisco_output=cisco_output)
+    return render_template('config.html', form=input_form, output=output, cisco_output=cisco_output)

@@ -15,7 +15,7 @@ class InputForm(FlaskForm):
     render_kw = {'class': 'form-control'}
     hostname = SelectField(
         validators=[DataRequired(message='The field is required')],
-        render_kw=render_kw,
+        render_kw={'class': 'form-select'},
     )
 
     interface = StringField(
