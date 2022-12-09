@@ -5,9 +5,12 @@ def use_local_migrate() -> str:
     try:
         hostname = input('Hostname: ')
         interface = input('Interface (ex. 0/2/0): ')
-        outer_tag = input('Outer_tag (ex. 364): ')
+        outer_tag = int(input('Outer_tag (ex. 364): '))
     except KeyboardInterrupt:
         print('\nTry again later')
+        quit()
+    except TypeError:
+        print('\n TypeError (str/int)')
         quit()
 
     try:

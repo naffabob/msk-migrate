@@ -20,6 +20,25 @@ class ConfigForm(FlaskForm):
     )
 
 
+class HostnameForm(FlaskForm):
+    hostname = SelectField(
+        validators=[DataRequired(message='The field is required')],
+        render_kw={'class': 'form-select'},
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fill_choices()
+
+    def fill_choices(self):
+        choices = [
+            (f, f) for f in listdir(CONFIG_DIR)
+            if isfile(join(CONFIG_DIR, f)) and '.ti.ru' in f
+        ]
+        choices = [('', '')] + choices
+        self.hostname.choices = choices
+
+
 class InputForm(FlaskForm):
     min_outer_tag_l = 1
     max_outer_tag_l = 4094

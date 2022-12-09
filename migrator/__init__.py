@@ -66,9 +66,11 @@ class Iface:
             if 'second-dot1q' in string:
                 """ encapsulation dot1Q 3199 second-dot1q 3028"""
                 encapsulation_parts = string.split()
-                self.outer_tag = encapsulation_parts[2]
-                self.inner_tag = encapsulation_parts[4]
-                self.unit = self.outer_tag.zfill(4) + self.inner_tag.zfill(4)
+                outer_tag_str = encapsulation_parts[2]
+                inner_tag_str = encapsulation_parts[4]
+                self.outer_tag = int(outer_tag_str)
+                self.inner_tag = int(inner_tag_str)
+                self.unit = outer_tag_str.zfill(4) + inner_tag_str.zfill(4)
 
             if 'ip address ' in string:
                 """  ip address 217.151.71.45 255.255.255.252"""
@@ -109,6 +111,9 @@ class Iface:
                 self.is_valid = False
                 return
 
+    def __str__(self):
+        return f'Iface {self.phys_name}'
+
 
 class Route:
     phys_name = None
@@ -128,6 +133,9 @@ class Route:
             self.next_hop = next_hops[0]
         else:
             self.phys_name = parts[4]
+
+    def __str__(self):
+        return f'Route: {self.ip_prefix}'
 
 
 class LocalMigrator:
@@ -201,7 +209,7 @@ class LocalMigrator:
                         self._routes[route.next_hop] = []
                     self._routes[route.next_hop].append(route)
 
-    def config_ip_ifaces(self, phys_number: str, outer_tag: str) -> str:
+    def config_ip_ifaces(self, phys_number: str, outer_tag: int) -> str:
         ifaces = [
             x for x in self._ifaces
             if x.phys_number == phys_number and x.outer_tag == outer_tag and not x.is_unnumbered
@@ -243,7 +251,7 @@ class LocalMigrator:
             output += f'\n'
         return output
 
-    def config_unnumbered_ifaces(self, phys_number: str, outer_tag: str) -> str:
+    def config_unnumbered_ifaces(self, phys_number: str, outer_tag: int) -> str:
         lo_networks = []
 
         for iface in (x for x in self._ifaces if x.is_loopback):
@@ -314,7 +322,7 @@ class LocalMigrator:
 
         return output
 
-    def config_static_subscribers(self, phys_number: str, outer_tag: str) -> str:
+    def config_static_subscribers(self, phys_number: str, outer_tag: int) -> str:
         ip_inners = [
             int(x.inner_tag) for x in self._ifaces
             if x.phys_number == phys_number and x.outer_tag == outer_tag and not x.is_unnumbered and x.is_subscriber
@@ -332,6 +340,7 @@ class LocalMigrator:
 
         output = ''
 
+        outer_tag_str = str(outer_tag)
         for iface_type, data in inners_data.items():
             if iface_type == 'ip':
                 unit_type = '8'
@@ -339,11 +348,11 @@ class LocalMigrator:
                 unit_type = '9'
             for obj in data:
                 if len(obj) == 1:
-                    single_unit = f'{unit_type}{outer_tag.zfill(4)}{str(obj[0]).zfill(4)}'
+                    single_unit = f'{unit_type}{outer_tag_str.zfill(4)}{str(obj[0]).zfill(4)}'
                     output += f'set system services static-subscribers group DUAL-TAG interface demux0.{single_unit}\n'
                 else:
-                    unit_start = f'{unit_type}{outer_tag.zfill(4)}{str(obj[0]).zfill(4)}'
-                    unit_end = f'{unit_type}{outer_tag.zfill(4)}{str(obj[-1]).zfill(4)}'
+                    unit_start = f'{unit_type}{outer_tag_str.zfill(4)}{str(obj[0]).zfill(4)}'
+                    unit_end = f'{unit_type}{outer_tag_str.zfill(4)}{str(obj[-1]).zfill(4)}'
                     output += f'set system services static-subscribers group DUAL-TAG interface demux0.{unit_start} upto demux0.{unit_end}\n'
 
         return output
@@ -362,3 +371,23 @@ class LocalMigrator:
             )
 
         return output
+
+    def get_statistics(self) -> dict:
+        valid_ifaces = [iface for iface in self._ifaces if iface.is_valid and not iface.is_loopback]
+
+        ifaces = {}
+
+        for iface in valid_ifaces:
+            if iface.phys_number not in ifaces:
+                ifaces[iface.phys_number] = {}
+            if iface.outer_tag not in ifaces[iface.phys_number]:
+                ifaces[iface.phys_number][iface.outer_tag] = []
+
+            ifaces[iface.phys_number][iface.outer_tag].append(iface.inner_tag)
+
+        for phys, data in ifaces.items():
+            for outer, inners in data.items():
+                inner_ints = list(map(int, inners))
+                data[outer] = sorted(inner_ints)
+
+        return ifaces

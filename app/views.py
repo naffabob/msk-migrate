@@ -2,7 +2,7 @@ from flask import flash, render_template, request, redirect, url_for
 from werkzeug.utils import secure_filename
 
 from app import app
-from app.forms import InputForm, ConfigForm
+from app.forms import InputForm, ConfigForm, HostnameForm
 from migrator import LocalMigrator, CONFIG_DIR
 
 
@@ -22,7 +22,7 @@ def config():
 
             hostname = input_form.hostname.data
             interface = input_form.interface.data
-            outer_tag = str(input_form.outer_tag.data)
+            outer_tag = input_form.outer_tag.data
 
             try:
                 with open(f'{CONFIG_DIR}{hostname}') as f:
@@ -61,3 +61,28 @@ def upload():
             return redirect(url_for('config'))
 
     return render_template('upload.html', form=form, page=page)
+
+
+@app.route('/stats')
+def stats():
+    page = 'stats'
+
+    form = HostnameForm(data=request.args)
+
+    action = request.args.get('action')
+
+    if action == 'get_stats':
+        if form.validate():
+            hostname = form.hostname.data
+            try:
+                with open(f'{CONFIG_DIR}{hostname}') as f:
+                    dev_config = f.read()
+            except FileNotFoundError:
+                flash('No such config file.', category='error')
+                return redirect(url_for('stats'))
+
+            lm = LocalMigrator(dev_config)
+            ifaces = lm.get_statistics()
+        return render_template('stats.html', form=form, page=page, ifaces=ifaces)
+
+    return render_template('stats.html', form=form, page=page)
