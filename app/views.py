@@ -6,7 +6,7 @@ from app.forms import InputForm, ConfigForm, HostnameForm
 from migrator import LocalMigrator, CONFIG_DIR
 
 
-@app.route('/')
+@app.route('/migrate/')
 def config():
     page = 'config'
 
@@ -44,7 +44,7 @@ def config():
     return render_template('config.html', form=input_form, page=page, output=output, cisco_output=cisco_output)
 
 
-@app.route('/upload', methods=['GET', 'POST'])
+@app.route('/migrate/upload', methods=['GET', 'POST'])
 def upload():
     page = 'upload'
 
@@ -63,7 +63,7 @@ def upload():
     return render_template('upload.html', form=form, page=page)
 
 
-@app.route('/stats')
+@app.route('/migrate/stats')
 def stats():
     page = 'stats'
 
